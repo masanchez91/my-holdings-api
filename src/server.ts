@@ -1,43 +1,60 @@
 import express from "express";
+import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
 import { Server as HTTPServer } from "http";
-import path from "path";
-
+import errorMiddleware from "./middlewares/error";
+import loggerMiddleware from "./middlewares/logger";
+import databaseConnection from "./database/mysql/connection";
 class Server {
+	public app!: express.Application;
+	private readonly DEFAULT_PORT_SERVER = process.env.PORT || 8080;
+	private httpServer!: HTTPServer;
 
-  public app!: express.Application;
-  private readonly DEFAULT_PORT_SERVER = 8080;
-  private httpServer!: HTTPServer;
-  
-  constructor() {
-      this.configExpress();
-      this.configResourcesDirectory();
-      this.configEjsTemplateEngine();
-      this.createServer();
-  }
-  
-  private configExpress() {
-      //Creamos nuestro servidor express
-    this.app = express();
-  }
+	constructor() {
+		this.configExpress();
+		this.dbConnection();
+		this.initializeMiddlewares();
+		this.initializeErrorHandling();
+		this.initializeLogger();
+		this.createServer();
+	}
 
-  private configResourcesDirectory() {
-    this.app.use(express.static(path.join(__dirname, "public"), { maxAge: 31557600000 })); 
-  }
+	private async dbConnection() {			
+		try {
+			await databaseConnection.authenticate();
+			console.info("Connection has been established successfully.", "\n");
+		} catch (error) {
+			console.error("Unable to connect to the database:", error, "\n");
+		}
+	}
 
-  private configEjsTemplateEngine() {
-    this.app.set( "views", path.join( __dirname, "views" ) );
-    this.app.set( "view engine", "ejs" );
-  }
+	private configExpress() {
+		this.app = express();
+	}
 
-  private createServer() {
-    this.httpServer = new HTTPServer(this.app);
-  }
+	private initializeMiddlewares() {
+		this.app.use(bodyParser.json());
+		this.app.use(cookieParser());
+	}
 
-  listen(callback: (port: number) => void): void {
-    this.httpServer.listen(this.DEFAULT_PORT_SERVER, () => {
-      callback(+this.DEFAULT_PORT_SERVER);
-    });
-  }
+	private initializeErrorHandling() {
+		this.app.use(errorMiddleware);
+	}
+
+	private initializeLogger() {
+		this.app.use(loggerMiddleware);
+	}
+
+	private createServer() {
+		this.httpServer = new HTTPServer(this.app);
+	}
+
+	public listen(callback: (port: number) => void): void {		
+		this.httpServer.listen(this.DEFAULT_PORT_SERVER, () => {
+			callback(+this.DEFAULT_PORT_SERVER);
+		});
+	}
+
 }
 
 export default Server;

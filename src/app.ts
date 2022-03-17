@@ -1,16 +1,20 @@
-import routerPrincipal from "./routes/root-router";
+import "dotenv/config";
+import router from "./routes/root-router";
 import Server from "./server";
+import validateEnv from "./utils/validateEnv";
+
+validateEnv();
 
 const server = new Server();
 
-// Ruta para la página inicial
-server.app.use("/", routerPrincipal);
+server.app.use("", router.routesPublic);
+server.app.use("/api/auth", router.routesAuth);
 
 server.listen((port: number)=> {
-    console.log(
+    console.info(
         "  App is running at http://localhost:%d in %s mode",
         port,
         server.app.get("env")
     );
-    console.log("  Press CTRL-C to stop\n");
+    console.info("  Press CTRL-C to stop\n");
 });
